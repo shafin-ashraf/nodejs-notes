@@ -1,5 +1,29 @@
 ## Promise
 A promise is an object that embodies the eventual result or error of a asynchronous operation
+### Example
+This example promise has 50-50 chance of resolving or rejecting
+```Javascript
+const promise = new Promise((resolve, reject) => {
+    const randomNumber = Math.random()
+    if (randomNumber < 0.5) {
+        return resolve('Promise was resolved')
+    } else {
+        return reject(new Error('Promise was rejected'))
+    }
+})
+
+promise.then(onResolved, onRejected)
+
+function onResolved(arg) {
+    console.log('success')
+    console.log(arg)
+}
+
+function onRejected(arg) {
+    console.log('failed')
+    console.log(arg)
+}
+```
 ### Promise API
 #### Constructor
 ```javascript
