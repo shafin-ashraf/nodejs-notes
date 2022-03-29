@@ -1,3 +1,59 @@
+## Callback
+A callback is a function that is passed as an argument to another function and is invoked
+with the result with the opearation completes. It is also knows as ``continuation-passing-style`` or ``CPS``
+### Example
+```Javascript
+// direct call style
+function sum(a, b) {
+    return a + b
+}
+console.log(`Summation with direct call: ${sum(1, 2)}`)
+
+// continuation passing style
+function sumWithCPS(a, b, callback) {
+    return callback(a + b)
+}
+
+function callback1(sum) {
+    console.log(`Summation with CPS: ${sum}`)
+}
+sumWithCPS(1, 2, callback1)
+```
+### Why callbacks?
+In most other language concurrency is done by using multiple threads. But during io; cpu cycle is wasted because current thread is waiting for io. In node concurrency is handled differently. Node executes all non io related function in a single thread. When this thread is waiting for io nodejs eventloop dispatches another function from call stack so that cpu cycle is utilized properly. This asynchronous type of code cannot be written in synchronous way (assuming we still don't know what is async/await), thats why callback function is used, so that eventlopp can dispatch this function in future.
+### Problems with callback (callback hell)
+Most of the time we want to execute some code after some code. In synchrous code this is very easy, but in callback you have keep nesting functions to perform one block of code after another tbis is known as callback hell
+```javascript
+getUser(1, (user) => {
+  console.log("User", user);
+  getRepositories(user.githubUsername, (repos) => {
+    console.log(repos);
+    getCommits(repos[0], (commits) => {
+      console.log(commits);
+      // Callback Hell ("-_-)
+    }
+})
+```
+Code above is short example of callback hell. This can get much worse for example
+![callback hell](callback_hell.jpeg)
+### Mitigating callback
+- Instead of defining anonymous function as callback, give function a name and move it outside it will keep code shallow
+```javascript
+    callbackFromHell(param, function (arg1, arg2) {
+        // code
+        // code
+    })
+
+    // giving callback function a name and moving it outside
+    callBackFromHell(param, callback)
+
+    function callback() {
+        // code
+        // code
+    }
+```
+- Learn and use Promise
+- Use async function with await keywords
 ## Promise
 A promise is an object that embodies the eventual result or error of a asynchronous operation
 ### Example
@@ -49,5 +105,13 @@ let promise = new Promise((resolve, reject) => {})
 Note: All promises are run parallelly
 - ``Promise.allSettled(iterable)`` Almost like ``Promise.all`` except doesn't reject if any single promise is rejected. Return all settled promises result either resolved or rejected
 - ``Promise.race(iterables)`` Returnes the first settled promise from iterables
-## Tips
+### Tips
 - Nodejs ``util`` module has a ``promosify`` function that turns any callback based function into promise based
+
+## Async/Await
+An async function is a special type of function in which it is possible to
+use the ``await`` expression to pause the execution on a given promise until it resolves.
+At each ``await`` expression the execution of the function is put on hold, its state
+is saved and the control is returned to the event loop. Once the ``Promise`` that has
+been awaited resolves, the control is given back to the async function, returning the
+fulfillment value of the promise. Async function always returns a promise.
