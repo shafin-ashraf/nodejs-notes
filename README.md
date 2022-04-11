@@ -109,35 +109,94 @@ Note: All promises are run parallelly
 - Nodejs ``util`` module has a ``promosify`` function that turns any callback based function into promise based
 
 ## Async/Await
-An async function is a special type of function in which it is possible to
-use the ``await`` expression to pause the execution on a given promise until it resolves.
-At each ``await`` expression the execution of the function is put on hold, its state
-is saved and the control is returned to the event loop. Once the ``Promise`` that has
-been awaited resolves, the control is given back to the async function, returning the
-fulfillment value of the promise. Async function always returns a promise.
+An async function is a special type of function in which it is possible to use the ``await`` expression to pause the execution on a given promise until it resolves. At each ``await`` expression the execution of the function is put on hold, its state is saved and the control is returned to the event loop. Once the ``Promise`` that has been awaited resolves, the control is given back to the async function, returning the fulfillment value of the promise. Async function always returns a promise.
+```javascript
+function resolveAfter2Seconds() {
+  return new Promise(resolve => {
+    setTimeout(() => {
+      resolve('resolved');
+    }, 2000);
+  });
+}
+
+async function asyncCall() {
+  console.log('calling');
+  const result = await resolveAfter2Seconds();
+  console.log(result);
+  // expected output: "resolved"
+}
+
+asyncCall();
+```
 
 ## Event Loop
-Event loop is an endless loop, where the javascript engine waits for task, executes them and then sleeps, waiting for more tasks. 
-The event loop is what allows Node.js to perform non-blocking I/O operations — despite the fact that JavaScript is single-threaded — by offloading operations to the system kernel whenever possible.
+Event loop is an endless loop, where the javascript engine waits for task, executes them and then sleeps, waiting for more tasks. The event loop is what allows Node.js to perform non-blocking I/O operations — despite the fact that JavaScript is single-threaded — by offloading operations to the system kernel whenever possible.
 ### Event Loop example diagram
 ![Event Loop](event_loop.png)
-1. The application generates a new I/O operation by submiing a
-request to the Event Demultiplexer. The application also
-specifies a handler, which will be invoked when the operation
-completes. Submiing a new request to the Event
-Demultiplexer is a non-blocking call and it immediately returns
-control to the application.
-2. When a set of I/O operations completes, the Event
-Demultiplexer pushes a set of corresponding events into
-the Event Queue.
-3. At this point, the Event Loop iterates over the items of the Event
-Queue.
+1. The application generates a new I/O operation by submiing a request to the Event Demultiplexer. The application also specifies a handler, which will be invoked when the operation completes. Submiing a new request to the Event Demultiplexer is a non-blocking call and it immediately returns control to the application.
+2. When a set of I/O operations completes, the Event Demultiplexer pushes a set of corresponding events into the Event Queue.
+3. At this point, the Event Loop iterates over the items of the Event Queue.
 4. For each event, the associated handler is invoked.
-5. The handler, which is part of the application code, gives back
-control to the Event Loop when its execution completes (5a).
-While the handler executes, it can request new asynchronous
-operations (5b), causing new items to be added to the Event
-Demultiplexer (1).
-6. When all the items in the Event Queue are processed, the Event
-Loop blocks again on the Event Demultiplexer, which then
-triggers another cycle when a new event is available.
+5. The handler, which is part of the application code, gives back control to the Event Loop when its execution completes (5a). While the handler executes, it can request new asynchronous operations (5b), causing new items to be added to the Event Demultiplexer (1).
+6. When all the items in the Event Queue are processed, the Event Loop blocks again on the Event Demultiplexer, which then triggers another cycle when a new event is available.
+
+## Module system
+Nodejs uses [CommonJs](http://www.commonjs.org/specs/modules/1.0/) spec for module system, which was designed to provide a module system for JavaScript in browserless environments. Node.js also ships with stable support for ESM starting from version 13.2.
+### Revealing module pattern
+Javascript doesn't have any namespace, so third party library can pollute the global namespace and cause variable and function name conflict A popular technique to solve this class of problems is called the revealing module paern, and it looks like this:
+```javascript
+const myModule = (() => {
+    const privateFoo = () => {}
+    const privateBar = []
+    const exported = {
+        publicFoo: () => {},
+        publicBar: () => {}
+    }
+    return exported
+})() // once the parenthesis here are parsed, the function
+// will be invoked
+console.log(myModule)
+console.log(myModule.privateFoo, myModule.privateBar)
+```
+This pattern separetes private variable/function and public functions/variable that third party library wants to expose. This technique leverages IIFE (Immediately Invoked Function Expression)
+### CommonJs details
+- `require` is a function that allows you to import a module from the local filesystem
+- `exports` and `module.exports` are special variables that can be used to export public functionality from the current module
+#### Multiple named export (CommonJs)
+In named export we can acesss each exported datatype/function by using property accessor using dot notation
+```javascript
+// file logger.js
+exports.info = (message) => {
+ console.log(`info: ${message}`)
+}
+exports.verbose = (message) => {
+ console.log(`verbose: ${message}`)
+}
+```
+```javascript
+// file main.js
+const logger = require('./logger')
+logger.info('This is an informational message')
+logger.verbose('This is a verbose message')
+```
+#### Single unnamed export (CommonJs)
+This kind of export only exposes one function/datatype
+```javascript
+// file logger.js
+module.exports = (message) => {
+ console.log(`info: ${message}`)
+}
+```
+```javascript
+// file main.js
+const logger = require('./logger')
+logger('This is an informational message')
+```
+#### CommonJs module exporting tip
+```javascript
+module.exports = () => console.log("This export will work")
+exports = () => console.log("This export will not work")
+```
+When exporting the object that `module.exports` points to is exported. `export` contains a copy of the same object's reference. `export` is defined like this `exports = module.exports` thats means modules.exports and exports point to the same object's reference. If we add a new property like `exports.newFunction` `module.exports` object will also get a new property. But if we use `export = someNewObject` then `module.exports` and `exports` will point to two different object and nothing will be exported.
+### ECMAScript Modules (ES modules or ESM)
+The most important differentiator between ESM and CommonJS is that ES modules are static, which means that imports are described at the top level of every module and outside any control flow statement
