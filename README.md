@@ -200,3 +200,173 @@ exports = () => console.log("This export will not work")
 When exporting the object that `module.exports` points to is exported. `export` contains a copy of the same object's reference. `export` is defined like this `exports = module.exports` thats means modules.exports and exports point to the same object's reference. If we add a new property like `exports.newFunction` `module.exports` object will also get a new property. But if we use `export = someNewObject` then `module.exports` and `exports` will point to two different object and nothing will be exported.
 ### ECMAScript Modules (ES modules or ESM)
 The most important differentiator between ESM and CommonJS is that ES modules are static, which means that imports are described at the top level of every module and outside any control flow statement
+## Error handling
+There is mainly two kind of errors
+ - `Operational Errors:` These are runtime errors that are expected and should be handled properly
+    - failed when connecting to database
+    - user input is not valid
+    - http 4xx/5xx responses
+ - `Programmers Errors:` Generallu code bugs falls into this category of errors
+    - accessing property of a object that doesn't exist
+    - Not handling a rejected promise
+    - Unexpeted type of argument passing in a function call
+### Error Object
+The error object is a built-in object that provides a standard set of useful information when an error occurs, such as a stack trace and the error message. For example:
+```javascript
+let error = new Error("The error message");
+console.log(error);
+console.log(error.stack)
+```
+Output
+```javascript
+{ 
+  stack: [Getter/Setter],
+  arguments: undefined,
+  type: undefined,
+  message: 'The error message' 
+}
+Error: The error message
+    at Object.<anonymous> (/home/nico/example.js:1:75)
+    at Module._compile (module.js:407:26)
+    at Object..js (module.js:413:10)
+    at Module.load (module.js:339:31)
+    at Function._load (module.js:298:12)
+    at Array.0 (module.js:426:10)
+    at EventEmitter._tickCallback (node.js:126:26)
+```
+### Throwing errors
+When you throw an error it unwinds the entire function call stack ignoring any functions you have on the stack. It gets delivered synchronously, in the same context where the function was called.
+
+If you use a try-catch block you can handle the error gracefully. Otherwise, the app usually crashes, unless you have a fallback for catching Uncaught Exceptions as I explained above.
+```javascript
+function willError() {
+    throw new Error("Something went wrong")
+}
+willError() // this will crash the process
+```
+### Handling error with try catch
+This is safe and will not crash process
+```javascript
+function willError() {
+    throw new Error("Something went wrong")
+}
+try {
+    willError()
+} catch (e) {
+    console.error(e)
+}
+```
+### Aynchronous error handling (Callback)
+try/catch will not work with continuation passing style programming (callbacks). Because you don't control when and where your callback will be called. Node has a convention to handle error in callback. Always first argument in call back if for error
+```javascript
+function somethingAsync(callback) {
+    let [success, val] = doSomeAsyncWork()
+    if (success) {
+        callback(undefined, val)
+    } else {
+        callback(new Error('something went wrong'))
+    }
+}
+
+function callback(err, val) {
+    if (err) {
+        console.error(err)
+        return
+    }
+    console.log(`Value is ${val}`)
+}
+```
+### Aynchronous error handling (Promise)
+With promise error handling is much simpler. Because when a error occurs in promise it can be rejected with error object. Then it can be can be handled with .catch
+```javascript
+function errorWithPromise(val) {
+    return new Promise((resolve, reject) => {
+        if (val == 10) {
+            resolve(val * 2)
+        } else {
+            reject(new Error("something went wrong"))
+        }
+    })
+}
+
+errorWithPromise(20)
+    .then(val => console.log(va))
+    .catch(err => console.log(err))
+```
+### Aynchronous error handling (async/await)
+If someone is using async/await error can be simply handled with try/catch block
+```javascript
+const someAsyncFunc = async () => {
+ try {
+    const user = await getUser()
+    const cart = await getCart(user)
+    return cart
+ } catch (error) {
+    console.error(error)
+ } finally {
+    await cleanUp()
+ }
+}
+```
+### Aynchronous error handling (EventEmitter)
+In some cases, you can’t rely on promise rejection or callbacks. What if you’re reading files from a stream. Or, fetching rows from a database and reading them as they arrive. A use case I see on a daily basis is streaming log lines and handling them as they’re coming in.
+
+You can’t rely on one error because you need to listen for error events on the EventEmitter object.
+
+In this case, instead of returning a Promise, your function would return an EventEmitter and emit row events for each result, an end event when all results have been reported, and an error event if any error is encountered.
+```javascript
+net.createServer(socket => {
+ socket
+ .on('data', data => {
+
+ })
+ .on('end', result => {
+
+ })
+ .on('error', console.error)
+}
+```
+### Custom error
+Error object can be extended for better error handling by making new type of error for each error type
+```javascript
+class ValidationError extends Error {
+  constructor(message, nameInvalid=false, ageInvalid=false) {
+    super(message);
+    this.name = "ValidationError";
+    this.nameInvalid = nameInvalid
+    this.ageInvalid = ageInvalid
+  }
+}
+
+function readUser(json) {
+    let user = JSON.parse(json)
+    if (!user.name) {
+        throw new ValidationError("name validation error", true, false)
+    } else if (!user.age) {
+        throw new ValidationError("age validation error", false, true)
+    }
+}
+
+try {
+  let user = readUser('{ "age": 25 }');
+} catch (err) {
+  if (err instanceof ValidationError) {
+    if (err.nameInvalid) {
+        // handle name error
+    } else (err.ageInvalid) {
+        // handle age error
+    }
+  } else if (err instanceof SyntaxError) {
+    console.error("JSON Syntax Error: " + err.message);
+  } else {
+    throw err; // unknown error, rethrow it
+  }
+}
+```
+### Error bonus tips
+Sometimes if you forgot to handle any error your process will crash. But there is solution for that. Node emits a event named `uncaughtException`. You can register a listener for that error and handle error accordingly
+```javascript
+process.on('uncaughtException', err => {
+    console.error(err)
+})
+```
