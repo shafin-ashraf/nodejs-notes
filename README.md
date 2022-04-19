@@ -94,7 +94,7 @@ let promise = new Promise((resolve, reject) => {})
 
 ### Instance methods
 - ``promise.then(onFulfilled, onRejected)`` Define callbacks for what to do after a promise settles (erither resolved or rejected)
-- ``promise.catch(onFulfilled, onRejected)`` Syntactic sugar for promise.then(undefined, onRejected). Useful in promise chaining when want to handle rejected promise at the end
+- ``promise.catch(onRejected)`` Syntactic sugar for promise.then(undefined, onRejected). Useful in promise chaining when want to handle rejected promise at the end
 - ``promise.finally(onFinally)`` Runs after a promise is settled (resolved or rejected). Useful to remove duplicate code that needs to be run in both cases resolved or rejected
 ### Chaining Promise
 ![Promise chaining](Promise_diagram.png)
